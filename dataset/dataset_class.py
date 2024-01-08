@@ -50,7 +50,6 @@ def get_dataloader(file_list, margin, dim, phase, batch_size, DATA_DIR, SAVE_DIR
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=is_shuffle, num_workers=4)
     return dataloader
 
-# TODO
 class WeightPNDataset(Dataset):
     def __init__(self, file_list, margin, dim, data_dir, save_dir, subset, num_classes):
         self.file_list = file_list
@@ -66,7 +65,10 @@ class WeightPNDataset(Dataset):
         idx2 = index%2048
 
         label_path = os.path.join(self.DATA_DIR, self.file_list[idx])
-        label_data = h5py.File(label_path, 'r')['label'][idx2][0]
+        f = h5py.File(label_path, 'r')
+        label_data = f['label'][idx2][0]
+        point_data = f['data'][idx2]
+        normal_data = f['normal'][idx2]
 
         h5name = self.file_list[idx]+ 'margin' + str(self.margin) + 'dim' + str(self.dim) + '.h5'
         weight_name = os.path.join(self.SAVE_DIR, h5name)
@@ -75,9 +77,11 @@ class WeightPNDataset(Dataset):
         all_idx = numpy.arange(2048)
         numpy.random.shuffle(all_idx)
         final_idx = all_idx[:self.subset]
-        weight = weight[final_idx,:]
 
-        return {'data':torch.Tensor(weight), 'label':label_data}
+        train_data = numpy.concatenate([weight, point_data, normal_data], axis=1)
+        train_data = train_data[final_idx,:]
+
+        return {'data':torch.Tensor(train_data), 'label':label_data}
 
     def __len__(self):
 
@@ -88,3 +92,10 @@ class WeightPNDataset(Dataset):
             cnt += d['data'].shape[0]
             d.close()
         return cnt
+
+def get_pn_dataloader(file_list, margin, dim, phase, batch_size, DATA_DIR, SAVE_DIR, subset, num_classes, shuffle=None):
+    is_shuffle = phase == 'train' if shuffle is None else shuffle
+
+    dataset = WeightPNDataset(file_list, margin, dim, DATA_DIR, SAVE_DIR, subset, num_classes)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=is_shuffle, num_workers=4)
+    return dataloader

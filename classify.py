@@ -12,7 +12,7 @@ import utility
 import process
 import models
 
-from dataset.dataset_class import get_dataloader
+from dataset.dataset_class import get_dataloader, get_pn_dataloader
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
@@ -43,18 +43,24 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # check if data preparation is necessary
-    data_list_train = utility.makeList(os.path.join(DATA_DIR, 'tt_files.txt'))
-    data_list_test = utility.makeList(os.path.join(DATA_DIR, 'tt_files.txt'))
+    data_list_train = utility.makeList(os.path.join(DATA_DIR, 'train_files.txt'))
+    data_list_test = utility.makeList(os.path.join(DATA_DIR, 'test_files.txt'))
 
     if args.train:
-
-        train_data = get_dataloader(data_list_test, 0.4, 256, 'train', 16, DATA_DIR, SAVE_DIR, args.subset, num_classes)
-        test_data = get_dataloader(data_list_test, 0.4, 256, 'test', 16, DATA_DIR, SAVE_DIR, args.subset, num_classes)
-
-
+        if args.normals:
+            # using point and normal
+            train_data = get_pn_dataloader(data_list_train, 0.4, 256, 'train', 16, DATA_DIR, SAVE_DIR, args.subset, num_classes)
+            test_data = get_pn_dataloader(data_list_test, 0.4, 256, 'test', 16, DATA_DIR, SAVE_DIR, args.subset, num_classes)
+            net = models.defineModelPN(args.subset, args.dim, num_classes).to(device)
+        else:
+            train_data = get_dataloader(data_list_train, 0.4, 256, 'train', 16, DATA_DIR, SAVE_DIR, args.subset,
+                                        num_classes)
+            test_data = get_dataloader(data_list_test, 0.4, 256, 'test', 16, DATA_DIR, SAVE_DIR, args.subset,
+                                       num_classes)
+            net = models.defineModel(args.subset, args.dim, num_classes).to(device)
         max_acc = 0.0
         # prepare model
-        net = models.defineModel(args.subset, args.dim, num_classes).to(device)
+
         adam = torch.optim.Adam(net.parameters(), lr=args.lr, betas=(0.99, 0.999), eps=1e-8, weight_decay=0.000)
         loss_func = torch.nn.CrossEntropyLoss().to(device)
 
@@ -67,6 +73,7 @@ if __name__ == '__main__':
             pbar = tqdm(train_data)
             for b, data in enumerate(pbar):
                 t_data = data['data'].to(device)
+                print(t_data.shape)
                 label = data['label'].to(device)
 
                 output = torch.squeeze(net(t_data), 1)
@@ -94,15 +101,22 @@ if __name__ == '__main__':
                 pred_val = numpy.argmax(curpred, 1)
                 correct = numpy.sum(pred_val.flatten() == test_labels.flatten())
                 scores = float(correct / float(test_inst))
-                print(pred_val)
-                print(test_labels)
+
                 print('Test accuracy: ', scores)
                 if max_acc < scores:
                     max_acc = scores
-                    net_work_path = "./model_data/best" + str(it) + ".pth"
+                    net_work_dir = "./model_data/" + "dim" + str(args.dim) + "margin" + str(
+                        args.margin) + "sample" + str(args.sample_size) + "/"
+                    if not os.path.exists(net_work_dir):
+                        os.mkdir(net_work_dir)
+                    net_work_path = net_work_dir + "best" + str(it) + ".pth"
                     torch.save(net.state_dict(), net_work_path)
                 print('Maximum accuracy: %f' % max_acc)
 
             if it%100 ==0 :
-                net_work_path = "./model_data/" + str(it) + ".pth"
+                net_work_dir = "./model_data/" + "dim" + str(args.dim) + "margin" + str(args.margin) + "sample" + str(
+                    args.sample_size) + "/"
+                if not os.path.exists(net_work_dir):
+                    os.mkdir(net_work_dir)
+                net_work_path = net_work_dir + str(it) + ".pth"
                 torch.save(net.state_dict(), net_work_path)
