@@ -135,10 +135,8 @@ def cal_dis(point_file, h5name, save_location, dim):
             dt[idstart:idend] = cupy.amin(dists, axis=1)
             del dists
         dt = cupy.reshape(dt, (-1, sample_size))
-        print("pinv mat size {}".format(pinvmat.shape))
-        print("dt size {}".format(dt.shape))
+
         res = cupy.matmul(pinvmat, dt.transpose())
-        print("res size {}".format(res.shape))
         tmp[inst] = cupy.asnumpy(res.transpose())
         del dt
         del xx
@@ -146,6 +144,6 @@ def cal_dis(point_file, h5name, save_location, dim):
     memory_pool.free_all_blocks()
     pinned_memory_pool.free_all_blocks()
 
-    saveh5 = h5py.File(save_location, 'w')
-    saveh5.create_dataset('data', data=tmp)
-    saveh5.close()
+    # saveh5 = h5py.File(save_location, 'w')
+    # saveh5.create_dataset('data', data=tmp)
+    # saveh5.close()

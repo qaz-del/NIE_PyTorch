@@ -83,7 +83,7 @@ class defineModelPN(nn.Module):
         super().__init__()
 
         self.Conv1 = nn.Sequential(
-            nn.Conv1d(sample_size + 6, 512, 1),
+            nn.Conv1d(sample_size, 512, 1),
             nn.ReLU(),
             nn.BatchNorm1d(512, 1e-3, 0.99)
         )
@@ -107,7 +107,7 @@ class defineModelPN(nn.Module):
         # Pool Output (bs, 1, feature)
 
         self.Dense1 = nn.Sequential(
-            nn.Linear(dimsize, 1024),
+            nn.Linear(dimsize + 6, 1024),
             nn.BatchNorm1d(1, 1e-3, 0.99),
             nn.Dropout(p=0.4)
         )
@@ -160,8 +160,9 @@ if __name__=="__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # (bs, channel, feature)
-    data = torch.randn(10,1024,256).to(device)
-    mlp = defineModel(1024, 256, 10).to(device)
+    data = torch.randn(10,1024,256+6).to(device)
+    # mlp = defineModel(1024, 256, 10).to(device)
+    mlp = defineModelPN(1024, 256, 10).to(device)
 
     out = mlp.forward(data)
     print(out)
