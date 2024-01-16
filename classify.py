@@ -14,6 +14,8 @@ import models
 
 from dataset.dataset_class import get_dataloader, get_pn_dataloader
 
+from tensorboardX import SummaryWriter
+
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 
@@ -31,10 +33,12 @@ if __name__ == '__main__':
     parser.add_argument('--sample_size', type=int, default=256,
                         help='Number of sampling points for distance field calculation')
     parser.add_argument('--subset', type=int, default=1024, help='Subset for acceleration and robustness')
+    parser.add_argument('--exp_name', type=str, default="exp", help='Path of train result')
     args = parser.parse_args()
 
     DATA_DIR = './data/modelnet40_ply_hdf5_2048'  # your directory
     SAVE_DIR = './data/weight_data'  # your directory
+    EXP_DIR = './model_data/' + args.exp_name
 
     num_classes = 40
     train_inst = 9840
@@ -71,8 +75,10 @@ if __name__ == '__main__':
         curpred = numpy.zeros((test_inst, num_classes))
         test_labels = numpy.zeros(test_inst)
         best_param = None
+        writer = SummaryWriter(log_dir=EXP_DIR+'/logs',comment='train')
         for it in range(1, args.epochs+1):
             pbar = tqdm(train_data)
+            t_loss= 0
             for b, data in enumerate(pbar):
                 t_data = data['data'].to(device)
                 label = data['label'].to(device)
@@ -81,12 +87,13 @@ if __name__ == '__main__':
                 pbar.set_description("EPOCH[{}][{}]".format(it, b))
 
                 loss = loss_func(output, label)
+                t_loss +=loss.item()
 
                 adam.zero_grad()
                 loss.backward()
                 adam.step()
             
-
+            writer.add_scalar("loss/epoch", t_loss, it)
             net.eval()
 
             curid = 0
@@ -110,14 +117,15 @@ if __name__ == '__main__':
                 print('Maximum accuracy: %f' % max_acc)
 
             if it%100 ==0 :
-                net_work_dir = "./model_data/" + "dim" + str(args.dim) + "margin" + str(args.margin) + "sample" + str(
+                net_work_dir = EXP_DIR + "/dim" + str(args.dim) + "margin" + str(args.margin) + "sample" + str(
                     args.sample_size) + "/"
                 if not os.path.exists(net_work_dir):
                     os.mkdir(net_work_dir)
                 net_work_path = net_work_dir + str(it) + ".pth"
                 torch.save(net.state_dict(), net_work_path)
 
-        net_work_dir = "./model_data/" + "dim" + str(args.dim) + "margin" + str(args.margin) + "sample" + str(args.sample_size) + "/"
+        net_work_dir = EXP_DIR + "/dim" + str(args.dim) + "margin" + str(args.margin) + "sample" + str(
+                    args.sample_size) + "/"
         if not os.path.exists(net_work_dir):
             os.mkdir(net_work_dir)
         net_work_path = net_work_dir + "best"  + ".pth"

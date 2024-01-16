@@ -2,6 +2,7 @@
 
 This is a Pytorch implementation of the CVPR 2020 papar:
 [Paper](http://openaccess.thecvf.com/content_CVPR_2020/papers/Fujiwara_Neural_Implicit_Embedding_for_Point_Cloud_Analysis_CVPR_2020_paper.pdf)
+and the original code can be found at [website](https://github.com/kentfuji/NeuralEmbedding).
 
  ## Requirements
 
@@ -12,8 +13,6 @@ The code requires the following:
 * cudnn
 * cupy
 * threading
-
-## Usage
 
 ## Citation
 Please cite the following paper:
